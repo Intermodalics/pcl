@@ -65,13 +65,15 @@ pcl::RegionGrowing<PointT, NormalT>::RegionGrowing () :
   curvature_threshold_ (0.05f),
   neighbour_number_ (30),
   search_ (),
+  search_type_ (SearchType::NEAREST_K_SEARCH),
   normals_ (),
   point_neighbours_ (0),
   point_labels_ (0),
   normal_flag_ (true),
   num_pts_in_segment_ (0),
   clusters_ (0),
-  number_of_segments_ (0)
+  number_of_segments_ (0),
+  radius_ (0.0)
 {
 }
 
@@ -195,6 +197,20 @@ pcl::RegionGrowing<PointT, NormalT>::setResidualThreshold (float residual)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename PointT, typename NormalT> double
+pcl::RegionGrowing<PointT, NormalT>::getRadius () const
+{
+  return (radius_);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename PointT, typename NormalT> void
+pcl::RegionGrowing<PointT, NormalT>::setRadius (double radius)
+{
+  radius_ = radius;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT, typename NormalT> float
 pcl::RegionGrowing<PointT, NormalT>::getCurvatureThreshold () const
 {
@@ -231,12 +247,14 @@ pcl::RegionGrowing<PointT, NormalT>::getSearchMethod () const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointT, typename NormalT> void
-pcl::RegionGrowing<PointT, NormalT>::setSearchMethod (const KdTreePtr& tree)
+pcl::RegionGrowing<PointT, NormalT>::setSearchMethod (const KdTreePtr& tree,
+                                                      unsigned int search_type)
 {
   if (search_ != 0)
     search_.reset ();
 
   search_ = tree;
+  search_type_ = search_type;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -364,7 +382,14 @@ pcl::RegionGrowing<PointT, NormalT>::findPointNeighbours ()
     {
       int point_index = (*indices_)[i_point];
       neighbours.clear ();
-      search_->nearestKSearch (i_point, neighbour_number_, neighbours, distances);
+      if (search_type_ == SearchType::RADIUS_SEARCH) {
+        std::cout << "/////////////// Doing radius search with "
+                  << radius_ << " radius ////////////" << std::endl;
+        search_->radiusSearch (i_point, radius_, neighbours, distances);
+
+      } else {
+        search_->nearestKSearch (i_point, neighbour_number_, neighbours, distances);
+      }
       point_neighbours_[point_index].swap (neighbours);
     }
   }
@@ -376,7 +401,13 @@ pcl::RegionGrowing<PointT, NormalT>::findPointNeighbours ()
       int point_index = (*indices_)[i_point];
       if (!pcl::isFinite (input_->points[point_index]))
         continue;
-      search_->nearestKSearch (i_point, neighbour_number_, neighbours, distances);
+      if (search_type_ == SearchType::RADIUS_SEARCH) {
+        std::cout << "/////////////// Doing radius search with "
+                  << radius_ << " radius ////////////" << std::endl;
+        search_->radiusSearch (i_point, radius_, neighbours, distances);
+      } else {
+        search_->nearestKSearch (i_point, neighbour_number_, neighbours, distances);
+      }
       point_neighbours_[point_index].swap (neighbours);
     }
   }
@@ -532,7 +563,7 @@ pcl::RegionGrowing<PointT, NormalT>::validatePoint (int initial_seed, int point,
 
   // check the residual if needed
   float data_1[4];
-  
+
   data_1[0] = input_->points[nghbr].data[0];
   data_1[1] = input_->points[nghbr].data[1];
   data_1[2] = input_->points[nghbr].data[2];

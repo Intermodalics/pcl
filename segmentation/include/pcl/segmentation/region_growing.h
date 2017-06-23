@@ -68,6 +68,13 @@ namespace pcl
       typedef typename Normal::Ptr NormalPtr;
       typedef pcl::PointCloud <PointT> PointCloud;
 
+      struct SearchType {
+        enum {
+          NEAREST_K_SEARCH = 0,
+          RADIUS_SEARCH = 1
+        };
+      };
+
       using PCLBase <PointT>::input_;
       using PCLBase <PointT>::indices_;
       using PCLBase <PointT>::initCompute;
@@ -160,6 +167,18 @@ namespace pcl
       void
       setResidualThreshold (float residual);
 
+      /**
+        * \brief Returns the radius value for the radius search.
+        */
+      double
+      getRadius () const;
+
+      /**
+        * \brief Sets the radius value for the radius search.
+        */
+      void
+      setRadius (double radius);
+
       /** \brief Returns curvature threshold. */
       float
       getCurvatureThreshold () const;
@@ -188,7 +207,8 @@ namespace pcl
         * \param[in] tree pointer to a KdTree
         */
       void
-      setSearchMethod (const KdTreePtr& tree);
+      setSearchMethod (const KdTreePtr& tree,
+                       unsigned int search_type = SearchType::NEAREST_K_SEARCH);
 
       /** \brief Returns normals. */
       NormalPtr
@@ -309,6 +329,9 @@ namespace pcl
       /** \brief Serch method that will be used for KNN. */
       KdTreePtr search_;
 
+      /** \brief Search type that will be used when finding neighbour points. */
+      unsigned int search_type_;
+
       /** \brief Contains normals of the points that will be segmented. */
       NormalPtr normals_;
 
@@ -331,6 +354,9 @@ namespace pcl
 
       /** \brief Stores the number of segments. */
       int number_of_segments_;
+
+      /** \brief Radius used if performing a radius search. */
+      double radius_;
 
     public:
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
